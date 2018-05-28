@@ -8,7 +8,7 @@ function _sr_cmd_init_node {
   local __WEB_PORT="$((10000 + ${i}))"
   local __WS=$(mktemp -d -p "${_SR_C_DIR}" \
     -t "${_SR_MAGIC}.${__NAME}.XXXXXXXXXXXXXX")
-  echo "screen -t ${__NAME} hcdev --bootstrapServer 127.0.0.1:10000 --execpath ${__WS} --path ${_SR_O_PATH} --DHTport ${__DHT_PORT} --debug web ${__WEB_PORT}" >> "${_SR_SCREEN_RC}"
+  echo "screen -t ${__NAME} bash -c 'hcdev --bootstrapServer 127.0.0.1:10000 --execpath ${__WS} --path ${_SR_O_PATH} --DHTport ${__DHT_PORT} --logPrefix \"${__NAME}: \" --debug web ${__WEB_PORT} 2>&1 | tee ${_SR_C_DIR}/${__NAME}.log'" >> "${_SR_SCREEN_RC}"
   hcadmin --path "${__WS}" init "${__NAME}@test.test" > /dev/null 2>&1
 }
 
@@ -31,8 +31,9 @@ function _sr_cmd_init {
   cat << EOF > "${_SR_SCREEN_RC}"
 startup_message off
 defscrollback 10000
+defshell -bash
 
-screen -t bootstrap bs --port 10000
+screen -t bootstrap bash -c 'bs --port 10000 2>&1 | tee ${_SR_C_DIR}/bs.log'
 EOF
 
   for i in 1 2 3; do

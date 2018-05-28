@@ -24,6 +24,8 @@ function _sr_cmd_run {
   _sr_log "Screen is running, ctrl-c to stop it"
   _sr_log "you should be able to 'screen -r' from another terminal"
   _sr_log "pid = ${__PID}"
+  _sr_log "view logs with: "
+  _sr_log "  tail -f ${_SR_C_DIR}/*.log"
   _sr_log "\n%s\n%s\n%s" "http://127.0.0.1:10001" "http://127.0.0.1:10002" "http://127.0.0.1:10003"
 
   wait "${__PID}"

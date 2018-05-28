@@ -12,22 +12,22 @@ function _sr_usage {
  * version = display version and exit
 
  * init    = initialize an hc siderun cluster
-      -c=<name> --cluster=<name> : the cluster name defaults to "default"
-      -p=<path> --path=<path> : required - path to the hc application source
+      -c <name> --cluster <name> : the cluster name, defaults to "default"
+      -p <path> --path <path> : path to the hc app source, defaults to "."
 
  * list    = list all initialized siderun clusters
 
  * run     = execute the named siderun cluster
-      -c=<name> --cluster=<name> : the cluster name defaults to "default"
+      -c <name> --cluster <name> : the cluster name, defaults to "default"
 
  * del     = delete a named siderun cluster
-      -c=<name> --cluster=<name> : the cluster name defaults to "default"
+      -c=<name> --cluster=<name> : the cluster name, defaults to "default"
 
  * clean   = clean up, delete all clusters
 
 [environment]
  * HC_SIDERUN_WORK_DIR - default: "$HOME/.hc-siderun"
- * HC_SIDERUN_MAGIC    - default: "hcs.~-~"' 1>&2
+ * HC_SIDERUN_MAGIC    - default: "hc-sr.~-~"' 1>&2
   exit 0
 }
 
@@ -36,11 +36,19 @@ function _sr_usage {
 # @scope-param _SR_O_NAME - -n / --name
 # @scope-param _SR_O_PATH - -p / --path
 function _sr_opt_parse {
-  for i in "${@}"; do
-    case ${i} in
+  while [ "${#}" -gt 0 ]; do
+    case ${1} in
       -*)
-        local __KEY="${i%%=*}"
-        local __VAL="${i#*=}"
+        local __KEY=""
+        local __VAL=""
+        if [[ ${1} == *"="* ]]; then
+          local __KEY="${1%%=*}"
+          local __VAL="${1#*=}"
+        else
+          local __KEY="${1}"
+          shift 1
+          local __VAL="${1}"
+        fi
         if [[ ${__KEY} == -* ]]; then
           local __KEY="${__KEY#*-}"
         fi
@@ -77,11 +85,12 @@ function _sr_opt_parse {
         ;;
       *)
         if [ "${_SR_O_CMD}x" != "x" ]; then
-          _sr_fail "illegal multiple sub-commands '${_SR_O_CMD}' + '${i}'"
+          _sr_fail "illegal multiple sub-commands '${_SR_O_CMD}' + '${1}'"
         fi
-        _SR_O_CMD="${i}"
+        _SR_O_CMD="${1}"
         ;;
     esac
+    shift 1
   done
 
   if [ "${_SR_O_CMD}x" == "x" -o "${_SR_O_CMD}" == "help" ]; then
@@ -97,5 +106,8 @@ function _sr_opt_parse {
   # defaults
   if [ "${_SR_O_CLUSTER}x" == "x" ]; then
     _SR_O_CLUSTER="default"
+  fi
+  if [ "${_SR_O_PATH}x" == "x" ]; then
+    _SR_O_PATH="$(readlink -f .)"
   fi
 }
