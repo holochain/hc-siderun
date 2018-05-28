@@ -8,6 +8,8 @@ function _sr_cmd_del {
 
   rm "${_SR_C_DIR}/cluster.screenrc" > /dev/null 2>&1 || true
 
+  find "${_SR_C_DIR}" -iname '*.log' -delete > /dev/null 2>&1 || true
+
   # make cleaning up work dirs a little safer (rm -Rf * yay)
   for __NODE in $(ls "${_SR_C_DIR}"); do
     local __P="${_SR_C_DIR}/${__NODE}"

@@ -28,6 +28,14 @@ function _opt_test_flag {
   test_expect "${_SR_O_NAME}" "test"
 }
 
+function _opt_test_flag2 {
+  _opt_clean
+
+  _sr_opt_parse "init" "--name" "test"
+
+  test_expect "${_SR_O_NAME}" "test"
+}
+
 function _opt_test_only_one_cmd {
   _opt_clean
 
@@ -54,6 +62,7 @@ function _opt_main {
 
   test_run _opt_test_cmd "subcommand should be set"
   test_run _opt_test_flag "flag should be set"
+  test_run _opt_test_flag2 "flag should be set (no = op)"
   test_run _opt_test_only_one_cmd "should not allow multiple subcommands"
   test_run _opt_test_only_one_flag "should not allow multiple of the same flag"
 }

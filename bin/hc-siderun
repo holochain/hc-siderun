@@ -5,7 +5,7 @@
 # make bash a little more strict / deterministic
 set -Eeuo pipefail
 
-_SR_VERSION_GIT="0ef4e2c"
+_SR_VERSION_GIT="b3aa5d9"
 
 # -- begin source files -- #
 
@@ -15,8 +15,8 @@ _SR_VERSION_GIT="0ef4e2c"
 ###########################################################################
 
 _SR_VERSION_MAJ=0
-_SR_VERSION_MIN=0
-_SR_VERSION_PATCH=1
+_SR_VERSION_MIN=1
+_SR_VERSION_PATCH=0
 _SR_VERSION="v${_SR_VERSION_MAJ}.${_SR_VERSION_MIN}.${_SR_VERSION_PATCH}+${_SR_VERSION_GIT}"
 
 ###########################################################################
@@ -58,22 +58,22 @@ function _sr_usage {
  * version = display version and exit
 
  * init    = initialize an hc siderun cluster
-      -c=<name> --cluster=<name> : the cluster name defaults to "default"
-      -p=<path> --path=<path> : required - path to the hc application source
+      -c <name> --cluster <name> : the cluster name, defaults to "default"
+      -p <path> --path <path> : path to the hc app source, defaults to "."
 
  * list    = list all initialized siderun clusters
 
  * run     = execute the named siderun cluster
-      -c=<name> --cluster=<name> : the cluster name defaults to "default"
+      -c <name> --cluster <name> : the cluster name, defaults to "default"
 
  * del     = delete a named siderun cluster
-      -c=<name> --cluster=<name> : the cluster name defaults to "default"
+      -c=<name> --cluster=<name> : the cluster name, defaults to "default"
 
  * clean   = clean up, delete all clusters
 
 [environment]
  * HC_SIDERUN_WORK_DIR - default: "$HOME/.hc-siderun"
- * HC_SIDERUN_MAGIC    - default: "hcs.~-~"' 1>&2
+ * HC_SIDERUN_MAGIC    - default: "hc-sr.~-~"' 1>&2
   exit 0
 }
 
@@ -82,11 +82,19 @@ function _sr_usage {
 # @scope-param _SR_O_NAME - -n / --name
 # @scope-param _SR_O_PATH - -p / --path
 function _sr_opt_parse {
-  for i in "${@}"; do
-    case ${i} in
+  while [ "${#}" -gt 0 ]; do
+    case ${1} in
       -*)
-        local __KEY="${i%%=*}"
-        local __VAL="${i#*=}"
+        local __KEY=""
+        local __VAL=""
+        if [[ ${1} == *"="* ]]; then
+          local __KEY="${1%%=*}"
+          local __VAL="${1#*=}"
+        else
+          local __KEY="${1}"
+          shift 1
+          local __VAL="${1}"
+        fi
         if [[ ${__KEY} == -* ]]; then
           local __KEY="${__KEY#*-}"
         fi
@@ -123,11 +131,12 @@ function _sr_opt_parse {
         ;;
       *)
         if [ "${_SR_O_CMD}x" != "x" ]; then
-          _sr_fail "illegal multiple sub-commands '${_SR_O_CMD}' + '${i}'"
+          _sr_fail "illegal multiple sub-commands '${_SR_O_CMD}' + '${1}'"
         fi
-        _SR_O_CMD="${i}"
+        _SR_O_CMD="${1}"
         ;;
     esac
+    shift 1
   done
 
   if [ "${_SR_O_CMD}x" == "x" -o "${_SR_O_CMD}" == "help" ]; then
@@ -143,6 +152,9 @@ function _sr_opt_parse {
   # defaults
   if [ "${_SR_O_CLUSTER}x" == "x" ]; then
     _SR_O_CLUSTER="default"
+  fi
+  if [ "${_SR_O_PATH}x" == "x" ]; then
+    _SR_O_PATH="$(readlink -f .)"
   fi
 }
 
@@ -187,7 +199,7 @@ function _sr_cmd_init_node {
   local __WEB_PORT="$((10000 + ${i}))"
   local __WS=$(mktemp -d -p "${_SR_C_DIR}" \
     -t "${_SR_MAGIC}.${__NAME}.XXXXXXXXXXXXXX")
-  echo "screen -t ${__NAME} hcdev --bootstrapServer 127.0.0.1:10000 --execpath ${__WS} --path ${_SR_O_PATH} --DHTport ${__DHT_PORT} --debug web ${__WEB_PORT}" >> "${_SR_SCREEN_RC}"
+  echo "screen -t ${__NAME} bash -c 'hcdev --bootstrapServer 127.0.0.1:10000 --execpath ${__WS} --path ${_SR_O_PATH} --DHTport ${__DHT_PORT} --logPrefix \"${__NAME}: \" --debug web ${__WEB_PORT} 2>&1 | tee ${_SR_C_DIR}/${__NAME}.log'" >> "${_SR_SCREEN_RC}"
   hcadmin --path "${__WS}" init "${__NAME}@test.test" > /dev/null 2>&1
 }
 
@@ -210,8 +222,9 @@ function _sr_cmd_init {
   cat << EOF > "${_SR_SCREEN_RC}"
 startup_message off
 defscrollback 10000
+defshell -bash
 
-screen -t bootstrap bs --port 10000
+screen -t bootstrap bash -c 'bs --port 10000 2>&1 | tee ${_SR_C_DIR}/bs.log'
 EOF
 
   for i in 1 2 3; do
@@ -265,6 +278,8 @@ function _sr_cmd_run {
   _sr_log "Screen is running, ctrl-c to stop it"
   _sr_log "you should be able to 'screen -r' from another terminal"
   _sr_log "pid = ${__PID}"
+  _sr_log "view logs with: "
+  _sr_log "  tail -f ${_SR_C_DIR}/*.log"
   _sr_log "\n%s\n%s\n%s" "http://127.0.0.1:10001" "http://127.0.0.1:10002" "http://127.0.0.1:10003"
 
   wait "${__PID}"
@@ -283,6 +298,8 @@ function _sr_cmd_del {
   fi
 
   rm "${_SR_C_DIR}/cluster.screenrc" > /dev/null 2>&1 || true
+
+  find "${_SR_C_DIR}" -iname '*.log' -delete > /dev/null 2>&1 || true
 
   # make cleaning up work dirs a little safer (rm -Rf * yay)
   for __NODE in $(ls "${_SR_C_DIR}"); do
@@ -304,8 +321,7 @@ function _sr_cmd_del {
 function _sr_cmd_clean {
   for _SR_O_CLUSTER in $(ls "${_SR_WORK_DIR}"); do
     local _SR_C_DIR="${_SR_WORK_DIR}/${_SR_O_CLUSTER}"
-    local _SR_SCREEN_RC="${_SR_C_DIR}/cluster.screenrc"
-    if [ -d "${_SR_C_DIR}" -a -f "${_SR_SCREEN_RC}" ]; then
+    if [ -d "${_SR_C_DIR}" ]; then
       _sr_cmd_del
     fi
   done
@@ -346,7 +362,7 @@ function _sr_main {
   # scope variables for commands
   local _SR_WORK_DIR="${HC_SIDERUN_WORK_DIR:-${HOME}/.hc-siderun}"
   local _SR_WORK_DIR="$(readlink -f ${_SR_WORK_DIR})"
-  local _SR_MAGIC="${HC_SIDERUN_MAGIC:-hcs.~-~}"
+  local _SR_MAGIC="${HC_SIDERUN_MAGIC:-hc-sr.~-~}"
 
   # delegate to command handlers
   case ${_SR_O_CMD} in
