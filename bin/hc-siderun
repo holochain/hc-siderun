@@ -5,7 +5,7 @@
 # make bash a little more strict / deterministic
 set -Eeuo pipefail
 
-_SR_VERSION_GIT="f4c911c"
+_SR_VERSION_GIT="0ef4e2c"
 
 # -- begin source files -- #
 
