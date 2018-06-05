@@ -16,6 +16,7 @@ function _sr_main {
   local _SR_O_CLUSTER=""
   local _SR_O_NAME=""
   local _SR_O_PATH=""
+  local _SR_O_FOLLOW="no"
 
   # parse our options
   _sr_opt_parse "${@}"
@@ -33,6 +34,9 @@ function _sr_main {
 
   # delegate to command handlers
   case ${_SR_O_CMD} in
+    quick)
+      _sr_cmd_quick
+      ;;
     init)
       _sr_cmd_init
       ;;

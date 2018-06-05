@@ -7,4 +7,5 @@ cmd.list.bash
 cmd.run.bash
 cmd.del.bash
 cmd.clean.bash
+cmd.quick.bash
 main.bash

@@ -1,6 +1,6 @@
 # validate sanity of environment
 function _sr_validate_env {
-  if ! ((screen -v || true) | grep 'Screen version' > /dev/null); then
+  if ! ( (screen -v || true) | grep 'Screen version' > /dev/null); then
     _sr_fail "Fatal: %s" \
       "'screen' command not found, 'sudo apt-get install screen'?"
   fi

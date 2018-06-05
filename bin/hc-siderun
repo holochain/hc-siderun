@@ -5,7 +5,7 @@
 # make bash a little more strict / deterministic
 set -Eeuo pipefail
 
-_SR_VERSION_GIT="b3aa5d9"
+_SR_VERSION_GIT="9b1eddd"
 
 # -- begin source files -- #
 
@@ -59,15 +59,21 @@ function _sr_usage {
 
  * init    = initialize an hc siderun cluster
       -c <name> --cluster <name> : the cluster name, defaults to "default"
-      -p <path> --path <path> : path to the hc app source, defaults to "."
+      -p <path> --path <path>    : path to the hc app source, defaults to "."
 
  * list    = list all initialized siderun clusters
 
  * run     = execute the named siderun cluster
       -c <name> --cluster <name> : the cluster name, defaults to "default"
+      -f --follow                : output all node logs
 
  * del     = delete a named siderun cluster
       -c=<name> --cluster=<name> : the cluster name, defaults to "default"
+
+ * quick   = delete / init / and run in one command
+      -c=<name> --cluster=<name> : the cluster name, defaults to "default"
+      -p <path> --path <path>    : path to the hc app source, defaults to "."
+      -f --follow                : output all node logs
 
  * clean   = clean up, delete all clusters
 
@@ -75,6 +81,16 @@ function _sr_usage {
  * HC_SIDERUN_WORK_DIR - default: "$HOME/.hc-siderun"
  * HC_SIDERUN_MAGIC    - default: "hc-sr.~-~"' 1>&2
   exit 0
+}
+
+# @scope-param __KEY
+function _sr_strip_key {
+  if [[ ${__KEY} == -* ]]; then
+    __KEY="${__KEY#*-}"
+  fi
+  if [[ ${__KEY} == -* ]]; then
+    __KEY="${__KEY#*-}"
+  fi
 }
 
 # @scope-param _SR_O_CMD - sub command
@@ -89,19 +105,24 @@ function _sr_opt_parse {
         local __VAL=""
         if [[ ${1} == *"="* ]]; then
           local __KEY="${1%%=*}"
+          _sr_strip_key
           local __VAL="${1#*=}"
         else
           local __KEY="${1}"
-          shift 1
-          local __VAL="${1}"
-        fi
-        if [[ ${__KEY} == -* ]]; then
-          local __KEY="${__KEY#*-}"
-        fi
-        if [[ ${__KEY} == -* ]]; then
-          local __KEY="${__KEY#*-}"
+          _sr_strip_key
+          case ${__KEY} in
+            f|follow)
+              ;;
+            *)
+              shift 1
+              local __VAL="${1}"
+              ;;
+          esac
         fi
         case ${__KEY} in
+          f|follow)
+            _SR_O_FOLLOW="yes"
+            ;;
           c|cluster)
             if [ "${_SR_O_CLUSTER}x" != "x" ]; then
               _sr_fail \
@@ -164,7 +185,7 @@ function _sr_opt_parse {
 
 # validate sanity of environment
 function _sr_validate_env {
-  if ! ((screen -v || true) | grep 'Screen version' > /dev/null); then
+  if ! ( (screen -v || true) | grep 'Screen version' > /dev/null); then
     _sr_fail "Fatal: %s" \
       "'screen' command not found, 'sudo apt-get install screen'?"
   fi
@@ -216,6 +237,8 @@ function _sr_cmd_init {
     _sr_fail "'${_SR_C_DIR}' exists, aborting"
   fi
 
+  _sr_log "initializing ${_SR_C_DIR}"
+
   mkdir -p "${_SR_C_DIR}"
 
   local _SR_SCREEN_RC="${_SR_C_DIR}/cluster.screenrc"
@@ -260,11 +283,24 @@ function _sr_cleanup_screen {
   screen -wipe > /dev/null 2>&1 || true
 }
 
+function _sr_wait_logs {
+  while true; do
+    local __COUNT=$(find "${_SR_C_DIR}" -iname \*.log | wc -l)
+    echo "log count: ${__COUNT}"
+    if (( ${__COUNT} >= 4 )); then
+      return
+    fi
+    sleep .1
+  done
+}
+
 function _sr_cmd_run {
   local _SR_C_DIR="${_SR_WORK_DIR}/${_SR_O_CLUSTER}"
   if [ ! -d "${_SR_C_DIR}" ]; then
     _sr_fail "'${_SR_C_DIR}' does not exist, aborting"
   fi
+
+  _sr_log "running ${_SR_C_DIR}"
 
   _SR_SCREEN_SOCKET_NAME="${_SR_MAGIC}.${_SR_O_CLUSTER}"
 
@@ -282,7 +318,12 @@ function _sr_cmd_run {
   _sr_log "  tail -f ${_SR_C_DIR}/*.log"
   _sr_log "\n%s\n%s\n%s" "http://127.0.0.1:10001" "http://127.0.0.1:10002" "http://127.0.0.1:10003"
 
-  wait "${__PID}"
+  if [ "${_SR_O_FOLLOW}" == "yes" ]; then
+    _sr_wait_logs
+     tail -f $(find "${_SR_C_DIR}" -iname \*.log)
+  else
+    wait "${__PID}"
+  fi
 }
 
 ###########################################################################
@@ -296,6 +337,8 @@ function _sr_cmd_del {
   if [ ! -d "${_SR_C_DIR}" ]; then
     _sr_fail "'${_SR_C_DIR}' does not exist, aborting"
   fi
+
+  _sr_log "deleting ${_SR_C_DIR}"
 
   rm "${_SR_C_DIR}/cluster.screenrc" > /dev/null 2>&1 || true
 
@@ -328,6 +371,19 @@ function _sr_cmd_clean {
 }
 
 ###########################################################################
+# cmd.quick.bash
+###########################################################################
+
+# cmd quick hc-siderun subcommand implementation
+# cleans up the current cluster, re-inits, and runs
+
+function _sr_cmd_quick {
+  _sr_cmd_del
+  _sr_cmd_init
+  _sr_cmd_run
+}
+
+###########################################################################
 # main.bash
 ###########################################################################
 
@@ -349,6 +405,7 @@ function _sr_main {
   local _SR_O_CLUSTER=""
   local _SR_O_NAME=""
   local _SR_O_PATH=""
+  local _SR_O_FOLLOW="no"
 
   # parse our options
   _sr_opt_parse "${@}"
@@ -366,6 +423,9 @@ function _sr_main {
 
   # delegate to command handlers
   case ${_SR_O_CMD} in
+    quick)
+      _sr_cmd_quick
+      ;;
     init)
       _sr_cmd_init
       ;;
