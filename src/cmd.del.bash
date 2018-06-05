@@ -6,6 +6,8 @@ function _sr_cmd_del {
     _sr_fail "'${_SR_C_DIR}' does not exist, aborting"
   fi
 
+  _sr_log "deleting ${_SR_C_DIR}"
+
   rm "${_SR_C_DIR}/cluster.screenrc" > /dev/null 2>&1 || true
 
   find "${_SR_C_DIR}" -iname '*.log' -delete > /dev/null 2>&1 || true

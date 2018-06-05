@@ -6,11 +6,24 @@ function _sr_cleanup_screen {
   screen -wipe > /dev/null 2>&1 || true
 }
 
+function _sr_wait_logs {
+  while true; do
+    local __COUNT=$(find "${_SR_C_DIR}" -iname \*.log | wc -l)
+    echo "log count: ${__COUNT}"
+    if (( ${__COUNT} >= 4 )); then
+      return
+    fi
+    sleep .1
+  done
+}
+
 function _sr_cmd_run {
   local _SR_C_DIR="${_SR_WORK_DIR}/${_SR_O_CLUSTER}"
   if [ ! -d "${_SR_C_DIR}" ]; then
     _sr_fail "'${_SR_C_DIR}' does not exist, aborting"
   fi
+
+  _sr_log "running ${_SR_C_DIR}"
 
   _SR_SCREEN_SOCKET_NAME="${_SR_MAGIC}.${_SR_O_CLUSTER}"
 
@@ -28,5 +41,10 @@ function _sr_cmd_run {
   _sr_log "  tail -f ${_SR_C_DIR}/*.log"
   _sr_log "\n%s\n%s\n%s" "http://127.0.0.1:10001" "http://127.0.0.1:10002" "http://127.0.0.1:10003"
 
-  wait "${__PID}"
+  if [ "${_SR_O_FOLLOW}" == "yes" ]; then
+    _sr_wait_logs
+     tail -f $(find "${_SR_C_DIR}" -iname \*.log)
+  else
+    wait "${__PID}"
+  fi
 }

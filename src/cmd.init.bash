@@ -25,6 +25,8 @@ function _sr_cmd_init {
     _sr_fail "'${_SR_C_DIR}' exists, aborting"
   fi
 
+  _sr_log "initializing ${_SR_C_DIR}"
+
   mkdir -p "${_SR_C_DIR}"
 
   local _SR_SCREEN_RC="${_SR_C_DIR}/cluster.screenrc"
