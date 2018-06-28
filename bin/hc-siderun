@@ -5,7 +5,7 @@
 # make bash a little more strict / deterministic
 set -Eeuo pipefail
 
-_SR_VERSION_GIT="9b1eddd"
+_SR_VERSION_GIT="5266d92"
 
 # -- begin source files -- #
 
@@ -335,7 +335,8 @@ function _sr_cmd_run {
 function _sr_cmd_del {
   local _SR_C_DIR="${_SR_WORK_DIR}/${_SR_O_CLUSTER}"
   if [ ! -d "${_SR_C_DIR}" ]; then
-    _sr_fail "'${_SR_C_DIR}' does not exist, aborting"
+    _sr_log "'${_SR_C_DIR}' does not exist, nothing to do"
+    return
   fi
 
   _sr_log "deleting ${_SR_C_DIR}"
@@ -378,8 +379,12 @@ function _sr_cmd_clean {
 # cleans up the current cluster, re-inits, and runs
 
 function _sr_cmd_quick {
+  local _SR_C_DIR="${_SR_WORK_DIR}/${_SR_O_CLUSTER}"
+  _sr_log "quick - del(${_SR_C_DIR})"
   _sr_cmd_del
+  _sr_log "quick - init(${_SR_C_DIR})"
   _sr_cmd_init
+  _sr_log "quick - run(${_SR_C_DIR})"
   _sr_cmd_run
 }
 

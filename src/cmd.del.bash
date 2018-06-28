@@ -3,7 +3,8 @@
 function _sr_cmd_del {
   local _SR_C_DIR="${_SR_WORK_DIR}/${_SR_O_CLUSTER}"
   if [ ! -d "${_SR_C_DIR}" ]; then
-    _sr_fail "'${_SR_C_DIR}' does not exist, aborting"
+    _sr_log "'${_SR_C_DIR}' does not exist, nothing to do"
+    return
   fi
 
   _sr_log "deleting ${_SR_C_DIR}"
