@@ -5,7 +5,7 @@
 # make bash a little more strict / deterministic
 set -Eeuo pipefail
 
-_SR_VERSION_GIT="5266d92"
+_SR_VERSION_GIT="b65d06c"
 
 # -- begin source files -- #
 
@@ -30,7 +30,7 @@ function _sr_log {
   local _FMT="${1}"
   shift 1
   printf "# hc-siderun: " 1>&2
-  printf "${_FMT}\n" "${@}" 1>&2
+  printf "${_FMT}\n" "${@:-}" 1>&2
 }
 
 # fatal exit condition
@@ -38,6 +38,11 @@ function _sr_fail {
   _sr_log "${@}"
   _sr_log "FATAL ERROR - aborting"
   exit 1
+}
+
+# Return the canonicalized path (works on OS-X like 'readlink -f' on Linux); . is $PWD
+function realpath {
+    [ "." = "${1}" ] && n=${PWD} || n=${1}; while nn=$( readlink -n "$n" ); do n=$nn; done; echo "$n"
 }
 
 ###########################################################################
@@ -143,7 +148,7 @@ function _sr_opt_parse {
                 "illegal multiple path flags '${_SR_O_PATH}' + '${__VAL}'"
             fi
             _SR_O_PATH="${__VAL}"
-            _SR_O_PATH="$(readlink -f ${_SR_O_PATH})"
+            _SR_O_PATH=$( realpath "${_SR_O_PATH}" )
             ;;
           *)
             _sr_fail "unrecognized flag '${__KEY}'"
@@ -161,7 +166,7 @@ function _sr_opt_parse {
   done
 
   if [ "${_SR_O_CMD}x" == "x" -o "${_SR_O_CMD}" == "help" ]; then
-    _sr_usage "${@}"
+    _sr_usage "${@:-}"
   fi
 
   if [ "${_SR_O_CMD}" == "version" ]; then
@@ -175,7 +180,7 @@ function _sr_opt_parse {
     _SR_O_CLUSTER="default"
   fi
   if [ "${_SR_O_PATH}x" == "x" ]; then
-    _SR_O_PATH="$(readlink -f .)"
+    _SR_O_PATH=$( realpath . )
   fi
 }
 
@@ -218,7 +223,7 @@ function _sr_cmd_init_node {
   local __NAME="node${__INDEX}"
   local __DHT_PORT="$((10100 + ${i}))"
   local __WEB_PORT="$((10000 + ${i}))"
-  local __WS=$(mktemp -d -p "${_SR_C_DIR}" \
+  local __WS=$(cd "${_SR_C_DIR}" && mktemp -d \
     -t "${_SR_MAGIC}.${__NAME}.XXXXXXXXXXXXXX")
   echo "screen -t ${__NAME} bash -c 'hcdev --bootstrapServer 127.0.0.1:10000 --execpath ${__WS} --path ${_SR_O_PATH} --DHTport ${__DHT_PORT} --logPrefix \"${__NAME}: \" --debug web ${__WEB_PORT} 2>&1 | tee ${_SR_C_DIR}/${__NAME}.log'" >> "${_SR_SCREEN_RC}"
   hcadmin --path "${__WS}" init "${__NAME}@test.test" > /dev/null 2>&1
@@ -423,7 +428,7 @@ function _sr_main {
 
   # scope variables for commands
   local _SR_WORK_DIR="${HC_SIDERUN_WORK_DIR:-${HOME}/.hc-siderun}"
-  local _SR_WORK_DIR="$(readlink -f ${_SR_WORK_DIR})"
+  local _SR_WORK_DIR=$( realpath "${_SR_WORK_DIR}" )
   local _SR_MAGIC="${HC_SIDERUN_MAGIC:-hc-sr.~-~}"
 
   # delegate to command handlers
@@ -448,7 +453,7 @@ function _sr_main {
       ;;
     *)
       _sr_log "unknown command '${_SR_O_CMD}'"
-      _sr_usage "${@}"
+      _sr_usage "${@:-}"
       ;;
   esac
 }

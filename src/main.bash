@@ -29,7 +29,7 @@ function _sr_main {
 
   # scope variables for commands
   local _SR_WORK_DIR="${HC_SIDERUN_WORK_DIR:-${HOME}/.hc-siderun}"
-  local _SR_WORK_DIR="$(readlink -f ${_SR_WORK_DIR})"
+  local _SR_WORK_DIR=$( realpath "${_SR_WORK_DIR}" )
   local _SR_MAGIC="${HC_SIDERUN_MAGIC:-hc-sr.~-~}"
 
   # delegate to command handlers
@@ -54,7 +54,7 @@ function _sr_main {
       ;;
     *)
       _sr_log "unknown command '${_SR_O_CMD}'"
-      _sr_usage "${@}"
+      _sr_usage "${@:-}"
       ;;
   esac
 }

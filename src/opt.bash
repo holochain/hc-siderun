@@ -97,7 +97,7 @@ function _sr_opt_parse {
                 "illegal multiple path flags '${_SR_O_PATH}' + '${__VAL}'"
             fi
             _SR_O_PATH="${__VAL}"
-            _SR_O_PATH="$(readlink -f ${_SR_O_PATH})"
+            _SR_O_PATH=$( realpath "${_SR_O_PATH}" )
             ;;
           *)
             _sr_fail "unrecognized flag '${__KEY}'"
@@ -115,7 +115,7 @@ function _sr_opt_parse {
   done
 
   if [ "${_SR_O_CMD}x" == "x" -o "${_SR_O_CMD}" == "help" ]; then
-    _sr_usage "${@}"
+    _sr_usage "${@:-}"
   fi
 
   if [ "${_SR_O_CMD}" == "version" ]; then
@@ -129,6 +129,6 @@ function _sr_opt_parse {
     _SR_O_CLUSTER="default"
   fi
   if [ "${_SR_O_PATH}x" == "x" ]; then
-    _SR_O_PATH="$(readlink -f .)"
+    _SR_O_PATH=$( realpath . )
   fi
 }

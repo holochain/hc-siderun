@@ -7,7 +7,7 @@
 # make bash a little more strict / deterministic
 set -Eeuo pipefail
 
-_SRT_DIR="$(dirname $(readlink -f ${0}))"
+_SRT_DIR=$( dirname $( n=${0}; while nn=$( readlink -n "$n" ); do n=$nn; done; echo "$n" ))
 _SRT_GIT_HASH="$(git rev-parse --short HEAD)"
 
 function _sr_test_exec {
