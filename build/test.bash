@@ -80,7 +80,7 @@ EOF
   cat << EOF >> "${_SRT_BIN}"
 
 # entrypoint
-_sr_main "\${@}"
+_sr_main "\${@:-help}"
 EOF
 
   echo "Built ${_SRT_BIN}" 1>&2

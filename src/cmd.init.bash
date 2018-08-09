@@ -30,7 +30,10 @@ function _sr_cmd_init {
   mkdir -p "${_SR_C_DIR}"
 
   local _SR_SCREEN_RC="${_SR_C_DIR}/cluster.screenrc"
-  cat << EOF > "${_SR_SCREEN_RC}"
+  # If the user already has a .screenrc configuration, harvest some basic configurations from it
+  ( [ -r "$HOME/.screenrc" ] && grep "^escape\|^hardstatus" "$HOME/.screenrc" || true ) \
+      > "${_SR_SCREEN_RC}"
+  cat << EOF >> "${_SR_SCREEN_RC}"
 startup_message off
 defscrollback 10000
 defshell -bash
