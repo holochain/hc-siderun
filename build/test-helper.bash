@@ -17,6 +17,17 @@ function test_expect {
   fi
 }
 
+function test_expect_numeric {
+  if [ ${#} -ne 2 ]; then
+    echo "test_expect_numeric should only have 2 params, got ${#}: ${@}"
+    exit 1
+  fi
+  if [ "${1}" -ne "${2}" ]; then
+    echo "BAD expected ${1} == ${2}"
+    exit 1
+  fi
+}
+
 function test_suite {
   __TEST_SUITE_NAME="${1}"
 }
